@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>DroneScan</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<style>
+/* ── RESET ── */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0d1117;--surface:#161b22;--s2:#1f2937;
+  --border:#30363d;--accent:#58a6ff;--green:#3fb950;
+  --warn:#d29922;--danger:#f85149;--text:#e6edf3;--muted:#8b949e;
+  --hh:54px;--tabh:54px;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* HEADER */
+header{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--hh);
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:2000;}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#1a73e8);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.logo h1{font-size:16px;font-weight:700;letter-spacing:-.3px;line-height:1.1;}
+.logo p{font-size:11px;color:var(--muted);}
+.hright{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.badge{font-size:10px;padding:3px 7px;border-radius:20px;font-weight:600;
+  background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);}
+.lang-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
+.lb{padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;border:none;
+  background:transparent;color:var(--muted);transition:all .15s;letter-spacing:.5px;}
+.lb.on{background:var(--accent);color:#fff;border-radius:20px;}
+
+/* LAYOUT */
+.app{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR (desktop) */
+.sidebar{width:320px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;}
+.sb-scroll::-webkit-scrollbar{width:3px;}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.ss{padding:13px 15px;border-bottom:1px solid var(--border);}
+.ss h3{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;font-weight:600;}
+
+/* MAP */
+#mapWrap{flex:1;position:relative;}
+#map{width:100%;height:100%;}
+.maphint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  background:rgba(13,17,23,.9);border:1px solid var(--border);border-radius:8px;
+  padding:7px 14px;font-size:12px;color:var(--muted);z-index:900;
+  pointer-events:none;backdrop-filter:blur(8px);white-space:nowrap;}
+.drawhint-mob{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:rgba(240,136,62,.15);border:1px solid rgba(240,136,62,.4);
+  color:#f0883e;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;
+  z-index:900;pointer-events:none;backdrop-filter:blur(6px);white-space:nowrap;}
+.drawhint-mob.show{display:block;}
+
+/* MOBILE BOTTOM NAV */
+.mobnav{display:none;height:var(--tabh);background:var(--surface);
+  border-top:1px solid var(--border);flex-shrink:0;z-index:1500;}
+.mobnav-inner{display:grid;grid-template-columns:repeat(4,1fr);height:100%;}
+.tnav{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;border:none;background:transparent;color:var(--muted);cursor:pointer;
+  font-size:10px;font-weight:600;transition:color .15s;padding:0 2px;}
+.tnav.on{color:var(--accent);}
+.tnav .ico{font-size:20px;line-height:1;}
+
+/* BOTTOM SHEET (mobile) */
+.bsheet{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);border-top:2px solid var(--border);
+  border-radius:16px 16px 0 0;z-index:1400;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  max-height:76vh;}
+.bsheet.open{transform:translateY(0);}
+.bhandle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:10px auto 4px;}
+.bscroll{overflow-y:auto;max-height:calc(76vh - 28px);padding-bottom:24px;}
+.bscroll::-webkit-scrollbar{width:3px;}
+.bscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* STEPS */
+.steps{display:flex;flex-direction:column;gap:6px;}
+.step{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;
+  border-radius:8px;background:var(--bg);border:1px solid var(--border);transition:all .2s;}
+.step.act{border-color:var(--accent);background:rgba(88,166,255,.07);}
+.step.done{border-color:var(--green);background:rgba(63,185,80,.07);}
+.snum{width:20px;height:20px;min-width:20px;border-radius:50%;background:var(--s2);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+  color:var(--muted);border:1px solid var(--border);}
+.step.act .snum{background:var(--accent);color:#fff;border-color:var(--accent);}
+.step.done .snum{background:var(--green);color:#fff;border-color:var(--green);}
+.stxt{font-size:12px;line-height:1.4;}
+.stxt strong{display:block;margin-bottom:1px;}
+.stxt small{color:var(--muted);font-size:11px;}
+
+/* TOOL BUTTONS */
+.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.tbtn{padding:10px 6px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;
+  text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:50px;}
+.tbtn:hover{border-color:var(--accent);background:rgba(88,166,255,.08);color:var(--accent);}
+.tbtn.drawing{border-color:#f0883e;background:rgba(240,136,62,.15);color:#f0883e;
+  animation:dpulse 1.2s infinite;}
+@keyframes dpulse{0%,100%{box-shadow:0 0 0 0 rgba(240,136,62,.4);}50%{box-shadow:0 0 0 5px rgba(240,136,62,0);}}
+.tbtn .tsp{font-size:20px;}
+.dhint{margin-top:8px;padding:7px 10px;background:rgba(240,136,62,.08);
+  border:1px solid rgba(240,136,62,.25);border-radius:6px;font-size:11px;color:#f0883e;
+  display:none;align-items:center;gap:6px;}
+.dhint.show{display:flex;}
+
+/* ZONE LIST */
+.zlist{display:flex;flex-direction:column;gap:5px;}
+.zitem{display:flex;align-items:center;gap:8px;padding:9px 10px;
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;transition:all .15s;font-size:12px;min-height:44px;}
+.zitem:hover{border-color:var(--accent);}
+.zitem.sel{border-color:var(--accent);background:rgba(88,166,255,.08);}
+.zdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.zname{flex:1;font-weight:600;}
+.zarea{color:var(--muted);font-size:11px;white-space:nowrap;}
+.zdel{background:none;border:none;cursor:pointer;color:var(--muted);
+  font-size:15px;padding:4px 6px;border-radius:4px;transition:all .15s;
+  min-width:30px;min-height:30px;display:flex;align-items:center;justify-content:center;}
+.zdel:hover{background:rgba(248,81,73,.15);color:var(--danger);}
+.nozones{font-size:12px;color:var(--muted);text-align:center;padding:10px 0;}
+
+/* LAYERS */
+.llist{display:flex;flex-direction:column;gap:5px;}
+.litem{display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:7px;background:var(--bg);border:1px solid var(--border);
+  cursor:pointer;transition:all .15s;font-size:12px;min-height:42px;}
+.litem:hover{border-color:var(--accent);}
+.litem.on{border-color:var(--accent);background:rgba(88,166,255,.08);}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.lchk{margin-left:auto;color:var(--accent);font-size:14px;display:none;}
+.litem.on .lchk{display:block;}
+
+/* ANALYSE BTN */
+#analyseBtn{width:100%;padding:13px;border-radius:9px;border:none;
+  background:linear-gradient(135deg,var(--accent),#1a73e8);color:#fff;
+  font-size:14px;font-weight:700;cursor:pointer;min-height:50px;
+  transition:opacity .2s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px;}
+#analyseBtn:disabled{opacity:.4;cursor:not-allowed;}
+#analyseBtn:not(:disabled):hover{opacity:.9;}
+#analyseBtn:not(:disabled):active{transform:scale(.98);}
+
+/* LOADER */
+.lwrap{display:none;flex-direction:column;align-items:center;gap:12px;padding:18px;text-align:center;}
+.lwrap.show{display:flex;}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.lsteps{display:flex;flex-direction:column;gap:5px;width:100%;}
+.lstep{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);}
+.lstep.done{color:var(--green);}
+.ld{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.lstep.done .ld{background:var(--green);}
+.lstep.act .ld{background:var(--accent);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* RESULTS */
+.verdict{border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;
+  gap:11px;margin-bottom:11px;border:1px solid;}
+.verdict.safe{background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3);}
+.verdict.caution{background:rgba(210,153,34,.1);border-color:rgba(210,153,34,.3);}
+.verdict.danger{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.3);}
+.vi{font-size:22px;flex-shrink:0;}
+.vt{font-size:13px;font-weight:700;margin-bottom:3px;}
+.verdict.safe .vt{color:var(--green);}
+.verdict.caution .vt{color:var(--warn);}
+.verdict.danger .vt{color:var(--danger);}
+.vd{font-size:11px;color:var(--muted);line-height:1.5;}
+
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:11px;}
+.met{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 10px;}
+.ml{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:3px;}
+.mv{font-size:18px;font-weight:700;}
+.mv.g{color:var(--green);} .mv.y{color:var(--warn);} .mv.r{color:var(--danger);} .mv.b{color:var(--accent);}
+.mu{font-size:10px;color:var(--muted);}
+
+.ndvib{margin-bottom:11px;}
+.ndvih{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;}
+.ndvit{height:10px;border-radius:10px;
+  background:linear-gradient(to right,#8B4513 0%,#D2B48C 20%,#FFFF00 40%,#7FBA00 60%,#008000 80%,#004D00 100%);
+  position:relative;border:1px solid var(--border);}
+.ndvc{position:absolute;top:-4px;width:4px;height:18px;background:#fff;
+  border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,.6);transform:translateX(-50%);transition:left .8s ease;}
+.ndvtk{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px;}
+.chip{background:var(--s2);border:1px solid var(--border);border-radius:20px;
+  padding:3px 9px;font-size:11px;color:var(--muted);display:inline-block;margin:2px;}
+
+/* INFRA */
+.ihead{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+  font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.icard{background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:8px 9px;display:flex;align-items:center;gap:7px;cursor:pointer;
+  transition:all .15s;user-select:none;min-height:52px;}
+.icard:hover{border-color:var(--accent);}
+.icard.has{border-left-width:3px;border-left-style:solid;}
+.icard.hid{opacity:.35;}
+.iico{font-size:17px;flex-shrink:0;}
+.iin{flex:1;min-width:0;}
+.inm{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ict{font-size:17px;font-weight:700;line-height:1.1;}
+.ict.zero{font-size:12px;color:var(--muted);}
+.iloading{font-size:11px;color:var(--muted);text-align:center;padding:10px;}
+.iloading span{animation:blink 1.2s infinite;display:inline-block;}
+.ierr{font-size:11px;color:var(--warn);padding:8px 10px;
+  background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.2);border-radius:6px;}
+.isum{font-size:11px;color:var(--muted);line-height:1.6;padding:7px 10px;
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-top:6px;}
+.legrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.leg{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);}
+.legdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+.rlist{display:flex;flex-direction:column;gap:5px;}
+.ritem{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);line-height:1.4;}
+.ritem em{flex-shrink:0;font-style:normal;}
+.src{font-size:10px;color:var(--muted);border-top:1px solid var(--border);
+  padding-top:10px;margin-top:10px;text-align:center;opacity:.6;line-height:1.6;}
+
+/* OSM TOOLTIP */
+.osm-tip{background:rgba(13,17,23,.92)!important;border:1px solid #30363d!important;
+  color:#e6edf3!important;font-family:-apple-system,sans-serif;font-size:12px;
+  padding:5px 9px;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.5);white-space:nowrap;}
+.osm-tip::before{display:none!important;}
+
+/* ─── MOBILE ─── */
+@media(max-width:768px){
+  .sidebar{display:none!important;}
+  .mobnav{display:flex;}
+  .bsheet{display:block;}
+  .logo p{display:none;}
+}
+/* ─── TABLET ─── */
+@media(min-width:769px) and (max-width:1024px){
+  .sidebar{width:280px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">🛸</div>
+  <div class="logo">
+    <h1>DroneScan</h1>
+    <p id="sub"></p>
+  </div>
+  <div class="hright">
+    <span class="badge">● LIVE</span>
+    <div class="lang-toggle">
+      <button class="lb on" id="lbFR" onclick="setLang('fr')">FR</button>
+      <button class="lb" id="lbEN" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="sidebar"><div class="sb-scroll" id="sbContent"></div></div>
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div class="maphint" id="mapHint"></div>
+    <div class="drawhint-mob" id="mobHint"></div>
+  </div>
+</div>
+
+<div class="mobnav">
+  <div class="mobnav-inner">
+    <button class="tnav on" id="tnDraw" onclick="showTab('draw')"><span class="ico">✏️</span><span id="tn1"></span></button>
+    <button class="tnav" id="tnZones" onclick="showTab('zones')"><span class="ico">🗺️</span><span id="tn2"></span></button>
+    <button class="tnav" id="tnLayers" onclick="showTab('layers')"><span class="ico">🛰️</span><span id="tn3"></span></button>
+    <button class="tnav" id="tnResults" onclick="showTab('results')"><span class="ico">📊</span><span id="tn4"></span></button>
+  </div>
+</div>
+
+<div class="bsheet" id="bsheet">
+  <div class="bhandle"></div>
+  <div class="bscroll" id="bscontent"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   TRANSLATIONS
+════════════════════════════════════════ */
+const TR = {
+fr:{
+  sub:'Végétation NDVI · Bâtiments · Infrastructures',
+  maphint:'Sélectionnez un outil et dessinez votre zone de vol',
+  tn1:'Dessiner',tn2:'Zones',tn3:'Fond',tn4:'Résultats',
+  proc:'Procédure',
+  s1t:'Dessiner la zone',s1d:'Délimitez votre zone de vol sur la carte',
+  s2t:'Analyser',s2d:'NDVI satellite + détection infrastructures OSM',
+  s3t:'Résultat',s3d:'Rapport complet de vol',
+  ttools:'Outils de dessin',
+  tRect:'Rectangle',tPoly:'Polygone',tCircle:'Cercle',
+  hRect:'Cliquez et glissez pour un rectangle',
+  hPoly:'Cliquez pour ajouter des points · Double-clic pour terminer',
+  hCircle:'Cliquez au centre puis glissez le rayon',
+  tzones:'Zones dessinées',nozones:'Aucune zone dessinée',del:'Supprimer',
+  tlayers:'Fond de carte',sat:'Satellite',osm:'OpenStreetMap',topo:'Topographique',
+  abtn:'🔍 Analyser la zone sélectionnée',rebtn:'🔄 Ré-analyser',
+  loading:'Analyse en cours…',
+  ls1:'Connexion données Sentinel-2',ls2:'Téléchargement imagerie NIR/RED',
+  ls3:'Calcul indice NDVI',ls4:'Interrogation Overpass API (OSM)',
+  ls5:'Détection bâtiments & infrastructures',ls6:'Génération rapport complet',
+  rtitle:'Résultat d\'analyse',
+  mNDVI:'NDVI moyen',mVeg:'Couverture végét.',mArea:'Surface zone',mSeas:'Saison',
+  solnu:'Sol nu',dense:'Dense',
+  vlabel:'Végétation détectée',
+  ititle:'🏗️ Infrastructures détectées',
+  iload:'⏳ Interrogation OpenStreetMap…',
+  inone:'✅ Aucune infrastructure critique détectée.',
+  ierr:'⚠️ Impossible de contacter Overpass API — vérifiez votre connexion.',
+  rtlt:'Recommandations de vol',
+  src:'🛰️ NDVI : Sentinel-2 ESA Copernicus (simulé)\n🗺️ Infrastructures : OpenStreetMap — Overpass API (temps réel)',
+  spring:'🌱 Printemps',summer:'☀️ Été',autumn:'🍂 Automne',winter:'❄️ Hiver',
+  vDanger:'⛔ Cultures actives',vCaution:'⚠️ Végétation modérée',vSafe:'✅ Zone dégagée',
+  vInfra:'⚠️ Obstacles détectés dans la zone',
+  vdDanger:'NDVI {n} · {v}% végétation · {s}',vdCaution:'NDVI {n} · {v}% végétation · {s}',
+  vdSafe:'NDVI {n} · {v}% végétation · {s}',vdInfra:'{vv} · Infrastructures critiques présentes',
+  cr1:'🌾 Céréales',cr2:'🌽 Maïs/Sorgho',cr3:'🌱 Cultures maraîchères',
+  cr4:'🌿 Prairie/Pâturage',cr5:'🌱 Jeunes pousses',cr6:'🌾 Post-récolte',cr7:'🌿 Végétation basse',
+  cr8:'🏜️ Sol nu',cr9:'🪨 Roche',cr10:'🌾 Chaume',cr11:'🏗️ Zone ouverte',
+  rD1:"Contactez l'agriculteur propriétaire avant tout vol",
+  rD2:'Évitez de voler à moins de 50m des cultures en croissance',
+  rD3:'Attendez la période post-récolte (NDVI < 0.3)',
+  rC1:'Inspectez visuellement la zone avant le décollage',
+  rC2:"Vérifiez l'absence de bétail dans la zone",
+  rC3:'Vol généralement possible — restez vigilant',
+  rS1:'Faible couverture végétale — favorable au vol',
+  rS2:'Vérifiez les espaces aériens (TMA/CTR) sur Airmap ou Droniq',
+  rS3:'Consultez la météo — vent < 7 m/s recommandé',
+  rI1:'Lignes/pylônes détectés ({n}) — maintenez ≥ 30m de distance',
+  rI2:'Aérodrome détecté — consultez les NOTAM et espaces réservés',
+  rI3:'Voie ferrée présente — évitez de survoler les trains',
+  rI4:'Routes proches — attention aux véhicules et personnes au sol',
+  rI5:'Zone industrielle — risque de câbles ou grues non publiés',
+  rI6:'Aucun obstacle détecté — zone favorable',
+  rI7:'Inspectez manuellement la présence de câbles dans la zone',
+  rFin:'Vérifiez la réglementation EASA et nationale avant chaque vol',
+  iB:'Bâtiments',iPL:'Lignes élect.',iT:'Pylônes/Mâts',
+  iR:'Routes',iRW:'Voie ferrée',iA:'Aérodrome',iW:"Cours d'eau",iI:'Zone indus.',
+  isB:'{n} bâtiment(s)',isT:'{n} pylône(s)',isPL:'{n} ligne(s) élect.',isR:'{n} route(s)',
+  isRW:'{n} voie(s) ferrée',isA:'{n} aérodrome(s)',isW:"{n} cours d'eau",isI:'{n} zone(s) indus.',
+  thide:'Clic pour masquer/afficher sur la carte',
+  noResult:'Aucun résultat. Dessinez une zone et lancez l\'analyse.',
+  zone:'Zone'
+},
+en:{
+  sub:'NDVI Vegetation · Buildings · Infrastructure',
+  maphint:'Select a drawing tool and outline your flight zone',
+  tn1:'Draw',tn2:'Zones',tn3:'Basemap',tn4:'Results',
+  proc:'Procedure',
+  s1t:'Draw zone',s1d:'Outline your flight zone on the map',
+  s2t:'Analyze',s2d:'Satellite NDVI + OSM infrastructure detection',
+  s3t:'Result',s3d:'Complete flight report',
+  ttools:'Drawing tools',
+  tRect:'Rectangle',tPoly:'Polygon',tCircle:'Circle',
+  hRect:'Click and drag to draw a rectangle',
+  hPoly:'Click to add points · Double-click to finish',
+  hCircle:'Click center then drag for radius',
+  tzones:'Drawn zones',nozones:'No zones drawn yet',del:'Delete',
+  tlayers:'Basemap',sat:'Satellite',osm:'OpenStreetMap',topo:'Topographic',
+  abtn:'🔍 Analyze selected zone',rebtn:'🔄 Re-analyze',
+  loading:'Analysis in progress…',
+  ls1:'Connecting to Sentinel-2 data',ls2:'Downloading NIR/RED imagery',
+  ls3:'Computing NDVI index',ls4:'Querying Overpass API (OSM)',
+  ls5:'Detecting buildings & infrastructure',ls6:'Generating full report',
+  rtitle:'Analysis result',
+  mNDVI:'Avg NDVI',mVeg:'Veg. coverage',mArea:'Zone area',mSeas:'Season',
+  solnu:'Bare soil',dense:'Dense',
+  vlabel:'Detected vegetation',
+  ititle:'🏗️ Detected infrastructure',
+  iload:'⏳ Querying OpenStreetMap via Overpass API…',
+  inone:'✅ No critical infrastructure detected in this zone.',
+  ierr:'⚠️ Unable to reach Overpass API — check your internet connection.',
+  rtlt:'Flight recommendations',
+  src:'🛰️ NDVI: Sentinel-2 ESA Copernicus (simulated)\n🗺️ Infrastructure: OpenStreetMap — Overpass API (real-time)',
+  spring:'🌱 Spring',summer:'☀️ Summer',autumn:'🍂 Autumn',winter:'❄️ Winter',
+  vDanger:'⛔ Active crops detected',vCaution:'⚠️ Moderate vegetation',vSafe:'✅ Clear zone',
+  vInfra:'⚠️ Obstacles detected in zone',
+  vdDanger:'NDVI {n} · {v}% vegetation · {s}',vdCaution:'NDVI {n} · {v}% vegetation · {s}',
+  vdSafe:'NDVI {n} · {v}% vegetation · {s}',vdInfra:'{vv} · Critical infrastructure present',
+  cr1:'🌾 Cereals',cr2:'🌽 Corn/Sorghum',cr3:'🌱 Market garden',
+  cr4:'🌿 Pasture/Meadow',cr5:'🌱 Young shoots',cr6:'🌾 Post-harvest',cr7:'🌿 Low vegetation',
+  cr8:'🏜️ Bare soil',cr9:'🪨 Rock',cr10:'🌾 Stubble',cr11:'🏗️ Open area',
+  rD1:'Contact the landowner before flying',
+  rD2:'Avoid flying within 50m of growing crops',
+  rD3:'Wait for post-harvest period (NDVI < 0.3)',
+  rC1:'Visually inspect the zone before takeoff',
+  rC2:'Check for absence of livestock in the area',
+  rC3:'Flight generally possible — stay alert',
+  rS1:'Low vegetation cover — favorable for flight',
+  rS2:'Check airspaces (TMA/CTR) on Airmap or Droniq',
+  rS3:'Check local weather — wind < 7 m/s recommended',
+  rI1:'Power lines/pylons detected ({n}) — maintain ≥ 30m clearance',
+  rI2:'Aerodrome detected — check NOTAMs and reserved airspaces',
+  rI3:'Railway present — avoid flying over moving trains',
+  rI4:'Roads nearby — watch for vehicles and people on the ground',
+  rI5:'Industrial area — risk of cables, cranes or unpublished activity',
+  rI6:'No obstacles detected — favorable flight zone',
+  rI7:'Manually check for cables and obstacles in the area',
+  rFin:'Check EASA and national regulations before every flight',
+  iB:'Buildings',iPL:'Power lines',iT:'Pylons/Masts',
+  iR:'Roads',iRW:'Railways',iA:'Aerodrome',iW:'Waterways',iI:'Industrial',
+  isB:'{n} building(s)',isT:'{n} pylon(s)',isPL:'{n} power line(s)',isR:'{n} road(s)',
+  isRW:'{n} railway(s)',isA:'{n} aerodrome(s)',isW:'{n} waterway(s)',isI:'{n} industrial zone(s)',
+  thide:'Click to hide/show on map',
+  noResult:'No results yet. Draw a zone and start the analysis.',
+  zone:'Zone'
+}};
+
+let lang='fr';
+function T(k,v={}){
+  let s=(TR[lang][k]||TR.fr[k]||k);
+  Object.entries(v).forEach(([a,b])=>s=s.replace(new RegExp(`\\{${a}\\}`,'g'),b));
+  return s;
+}
+function setLang(l){
+  lang=l;
+  document.getElementById('lbFR').classList.toggle('on',l==='fr');
+  document.getElementById('lbEN').classList.toggle('on',l==='en');
+  document.documentElement.lang=l;
+  applyStaticT();
+  renderSB();
+  renderZones();
+  if(isMob())showTab(curTab);
+  if(lastR)renderResults(lastR);
+}
+function applyStaticT(){
+  document.getElementById('sub').textContent=T('sub');
+  document.getElementById('mapHint').textContent='👆 '+T('maphint');
+  ['1','2','3','4'].forEach(n=>{ const el=document.getElementById('tn'+n); if(el)el.textContent=T('tn'+n); });
+}
+
+/* ════════════════════════════════════════
+   MAP
+════════════════════════════════════════ */
+const map=L.map('map',{center:[46.82,8.23],zoom:8});
+const TILES={
+  satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19}),
+  osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19}),
+  topo:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap',maxZoom:17})
+};
+TILES.satellite.addTo(map);
+let curLayer='satellite';
+function setLayer(n){
+  map.removeLayer(TILES[curLayer]);TILES[n].addTo(map);curLayer=n;
+  renderSB();if(isMob())showTab('layers');
+}
+const drawnFG=new L.FeatureGroup().addTo(map);
+const overlayFG=new L.FeatureGroup().addTo(map);
+const infraFG=new L.FeatureGroup().addTo(map);
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+const zones={};
+let zCnt=0,selId=null,drawH=null,curTab='draw',lastR=null;
+const COLORS=['#58a6ff','#f0883e','#bc8cff','#3fb950','#ff7b72','#79c0ff','#ffa657'];
+
+/* ════════════════════════════════════════
+   INFRA CONFIG
+════════════════════════════════════════ */
+function INFRA(){return{
+  building: {get label(){return T('iB')},ico:'🏠',col:'#ff6b6b',q:`(way["building"]({{B}});relation["building"]({{B}}););`},
+  powerline:{get label(){return T('iPL')},ico:'⚡',col:'#ffa500',q:`(way["power"="line"]({{B}});way["power"="minor_line"]({{B}}););`},
+  tower:    {get label(){return T('iT')},ico:'📡',col:'#f0c040',q:`(node["man_made"="tower"]({{B}});node["man_made"="mast"]({{B}});node["power"="tower"]({{B}});node["power"="pole"]({{B}}););`},
+  road:     {get label(){return T('iR')},ico:'🛣️',col:'#aaaaaa',q:`(way["highway"~"motorway|trunk|primary|secondary|tertiary|residential|unclassified"]({{B}}););`},
+  railway:  {get label(){return T('iRW')},ico:'🚂',col:'#a371f7',q:`(way["railway"~"rail|light_rail|subway|tram"]({{B}}););`},
+  aeroway:  {get label(){return T('iA')},ico:'✈️',col:'#58a6ff',q:`(way["aeroway"]({{B}});node["aeroway"]({{B}}););`},
+  waterway: {get label(){return T('iW')},ico:'💧',col:'#4fc3f7',q:`(way["waterway"]({{B}});way["natural"="water"]({{B}}););`},
+  industrial:{get label(){return T('iI')},ico:'🏭',col:'#e3b341',q:`(way["landuse"="industrial"]({{B}});way["landuse"="commercial"]({{B}}););`},
+};}
+
+/* ════════════════════════════════════════
+   DRAW TOOLS
+════════════════════════════════════════ */
+function setTool(tool){
+  if(drawH){drawH.disable();drawH=null;}
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('drawing'));
+  document.querySelectorAll('.dhint').forEach(d=>d.classList.remove('show'));
+  document.getElementById('mobHint').classList.remove('show');
+  const bmap={rect:'btnRect',poly:'btnPoly',circle:'btnCircle'};
+  const btn=document.getElementById(bmap[tool]);
+  if(btn)btn.classList.add('drawing');
+  const ht=T('h'+tool.charAt(0).toUpperCase()+tool.slice(1));
+  document.querySelectorAll('.dhint').forEach(d=>{d.querySelector('span:last-child').textContent=ht;d.classList.add('show');});
+  const mh=document.getElementById('mobHint');
+  mh.textContent=ht;mh.classList.add('show');
+  const so={shapeOptions:{color:'#f0883e',fillOpacity:.15,weight:2}};
+  if(tool==='rect') drawH=new L.Draw.Rectangle(map,so);
+  if(tool==='poly') drawH=new L.Draw.Polygon(map,{...so,allowIntersection:false});
+  if(tool==='circle') drawH=new L.Draw.Circle(map,so);
+  drawH.enable();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&drawH){
+    drawH.disable();drawH=null;
+    document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('drawing'));
+    document.querySelectorAll('.dhint').forEach(d=>d.classList.remove('show'));
+    document.getElementById('mobHint').classList.remove('show');
+  }
+});
+map.on(L.Draw.Event.CREATED,function(e){
+  drawH=null;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('drawing'));
+  document.querySelectorAll('.dhint').forEach(d=>d.classList.remove('show'));
+  document.getElementById('mobHint').classList.remove('show');
+  const id=++zCnt;
+  const color=COLORS[(id-1)%COLORS.length];
+  const layer=e.layer;
+  if(layer.setStyle)layer.setStyle({color,fillColor:color,fillOpacity:.18,weight:2});
+  drawnFG.addLayer(layer);
+  zones[id]={layer,overlay:null,infraLayers:[],name:T('zone')+' '+id,areaStr:areaStr(layer),color};
+  renderZones();selZone(id);
+  document.getElementById('mapHint').style.display='none';
+  document.querySelectorAll('.step1el').forEach(el=>{el.classList.remove('act');el.classList.add('done');});
+  document.querySelectorAll('.step2el').forEach(el=>el.classList.add('act'));
+  if(isMob())showTab('zones');
+});
+
+/* ════════════════════════════════════════
+   ZONE MANAGEMENT
+════════════════════════════════════════ */
+function selZone(id){
+  selId=id;
+  Object.entries(zones).forEach(([zid,z])=>{
+    if(z.layer.setStyle)z.layer.setStyle({color:z.color,fillColor:z.color,weight:zid==id?3:2,fillOpacity:zid==id?.25:.15});
+  });
+  renderZones();
+  document.querySelectorAll('#analyseBtn').forEach(b=>{b.disabled=false;b.innerHTML=T('abtn');});
+  document.querySelectorAll('.resblock').forEach(r=>r.style.display='none');
+  document.querySelectorAll('.step2el').forEach(el=>{el.classList.remove('done');el.classList.add('act');});
+  document.querySelectorAll('.step3el').forEach(el=>el.classList.remove('act','done'));
+}
+function delZone(id,e){
+  e.stopPropagation();
+  const z=zones[id];if(!z)return;
+  drawnFG.removeLayer(z.layer);
+  if(z.overlay)overlayFG.removeLayer(z.overlay);
+  z.infraLayers.forEach(l=>infraFG.removeLayer(l));
+  delete zones[id];
+  if(selId==id){
+    selId=null;
+    document.querySelectorAll('#analyseBtn').forEach(b=>b.disabled=true);
+    document.querySelectorAll('.resblock').forEach(r=>r.style.display='none');
+    const rem=Object.keys(zones);
+    if(rem.length>0)selZone(Number(rem[rem.length-1]));
+    else{
+      document.querySelectorAll('.step1el').forEach(el=>{el.classList.add('act');el.classList.remove('done');});
+      document.querySelectorAll('.step2el,.step3el').forEach(el=>el.classList.remove('act','done'));
+      document.getElementById('mapHint').style.display='block';
+    }
+  }
+  renderZones();
+}
+function renderZones(){
+  const ids=Object.keys(zones);
+  const html=ids.length===0?`<div class="nozones">${T('nozones')}</div>`
+    :ids.map(id=>{
+      const z=zones[id];
+      return`<div class="zitem${id==selId?' sel':''}" onclick="selZone(${id})">
+        <div class="zdot" style="background:${z.color}"></div>
+        <span class="zname">${z.name}</span><span class="zarea">${z.areaStr}</span>
+        <button class="zdel" onclick="delZone(${id},event)" title="${T('del')}">✕</button>
+      </div>`;
+    }).join('');
+  document.querySelectorAll('.zlist-target').forEach(el=>el.innerHTML=html);
+}
+
+/* ════════════════════════════════════════
+   AREA HELPERS
+════════════════════════════════════════ */
+function areaStr(l){
+  const m=areaSqM(l);
+  if(m<10000)return Math.round(m).toLocaleString('fr-FR')+' m²';
+  if(m<1e6)return(m/10000).toFixed(2)+' ha';
+  return(m/1e6).toFixed(3)+' km²';
+}
+function areaSqM(l){
+  if(l instanceof L.Circle){const r=l.getRadius();return Math.PI*r*r;}
+  const ll=l.getLatLngs();const pts=ll[0]||ll;
+  return polyArea(Array.isArray(pts[0])?pts.flat():pts);
+}
+function polyArea(pts){
+  if(!pts||pts.length<3)return 0;
+  let a=0;const R=6371000,n=pts.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    const xi=pts[i].lng*Math.PI/180*R*Math.cos(pts[i].lat*Math.PI/180);
+    const yi=pts[i].lat*Math.PI/180*R;
+    const xj=pts[j].lng*Math.PI/180*R*Math.cos(pts[j].lat*Math.PI/180);
+    const yj=pts[j].lat*Math.PI/180*R;
+    a+=xi*yj-xj*yi;
+  }
+  return Math.abs(a/2);
+}
+function getBnds(l){return l.getBounds?l.getBounds():l.getLatLng().toBounds(l.getRadius()*2);}
+function isMob(){return window.innerWidth<=768;}
+
+/* ════════════════════════════════════════
+   OVERPASS API
+════════════════════════════════════════ */
+async function fetchOSM(layer){
+  const b=getBnds(layer);
+  const bbox=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const inf=INFRA();
+  const parts=Object.values(inf).map(cfg=>cfg.q.replace(/\{\{B\}\}/g,bbox)).join('\n');
+  const query=`[out:json][timeout:30];\n(\n${parts}\n);\nout body geom;`;
+  const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();return d.elements||[];
+}
+function classEl(el){
+  const t=el.tags||{};
+  if(t.building)return'building';
+  if(t.power==='line'||t.power==='minor_line')return'powerline';
+  if(t.man_made==='tower'||t.man_made==='mast'||t.power==='tower'||t.power==='pole')return'tower';
+  if(t.highway)return'road';if(t.railway)return'railway';
+  if(t.aeroway)return'aeroway';if(t.waterway||t.water)return'waterway';
+  if(t.landuse==='industrial'||t.landuse==='commercial')return'industrial';
+  return null;
+}
+function buildLayers(elements,zoneLayer){
+  const inf=INFRA();const res={};
+  Object.keys(inf).forEach(k=>res[k]={count:0,layers:[]});
+  const seen=new Set();
+  elements.forEach(el=>{
+    const type=classEl(el);if(!type||seen.has(el.id))return;seen.add(el.id);
+    const cfg=inf[type];
+    const name=(el.tags&&(el.tags.name||el.tags.ref))||'';
+    const tip=`<b>${cfg.ico} ${cfg.label}</b>${name?' — '+name:''}`;
+    let lyr=null;
+    if(el.type==='node'&&el.lat!==undefined){
+      if(zoneLayer instanceof L.Circle){
+        const d=zoneLayer.getLatLng().distanceTo(L.latLng(el.lat,el.lon));
+        if(d>zoneLayer.getRadius())return;
+      }
+      lyr=L.circleMarker([el.lat,el.lon],{radius:type==='tower'?7:5,color:cfg.col,fillColor:cfg.col,fillOpacity:.9,weight:2})
+           .bindTooltip(tip,{direction:'top',className:'osm-tip'});
+    }else if(el.type==='way'&&el.geometry&&el.geometry.length>1){
+      const coords=el.geometry.map(p=>[p.lat,p.lon]);
+      const isClosed=!!(el.tags&&(el.tags.building||el.tags.landuse||el.tags.natural==='water'));
+      const style={color:cfg.col,weight:type==='road'?3:2,fillColor:cfg.col,
+        fillOpacity:isClosed?.25:0,dashArray:type==='powerline'?'6,4':type==='railway'?'8,3':null,opacity:.85};
+      lyr=isClosed?L.polygon(coords,style).bindTooltip(tip,{className:'osm-tip'})
+                  :L.polyline(coords,style).bindTooltip(tip,{className:'osm-tip'});
+    }
+    if(lyr){lyr._itype=type;res[type].count++;res[type].layers.push(lyr);}
+  });
+  return res;
+}
+function toggleInfra(type,zoneId){
+  const z=zones[zoneId];if(!z)return;
+  z.infraLayers.forEach(l=>{
+    if(l._itype!==type)return;
+    if(infraFG.hasLayer(l))infraFG.removeLayer(l);else infraFG.addLayer(l);
+  });
+  document.querySelectorAll(`.icard[data-t="${type}"][data-z="${zoneId}"]`)
+    .forEach(c=>c.classList.toggle('hid'));
+}
+
+/* ════════════════════════════════════════
+   ANALYSIS
+════════════════════════════════════════ */
+function startAnalysis(){
+  if(!selId||!zones[selId])return;
+  document.querySelectorAll('#analyseBtn').forEach(b=>b.disabled=true);
+  document.querySelectorAll('.resblock').forEach(r=>r.style.display='none');
+  document.querySelectorAll('.lwrap').forEach(l=>l.classList.add('show'));
+  document.querySelectorAll('.step2el').forEach(el=>{el.classList.remove('act');el.classList.add('done');});
+  document.querySelectorAll('.step3el').forEach(el=>el.classList.add('act'));
+  const ss=['ls1','ls2','ls3','ls4','ls5','ls6'];
+  document.querySelectorAll('.lstep').forEach(el=>el.className='lstep');
+  let i=0;
+  function next(){
+    if(i>0)document.querySelectorAll('.lstep'+i).forEach(el=>el.classList.add('done'));
+    if(i<ss.length){
+      document.querySelectorAll('#'+ss[i]).forEach(el=>el.classList.add('act'));i++;
+      setTimeout(next,480+Math.random()*320);
+    }else{
+      setTimeout(()=>{
+        document.querySelectorAll('.lwrap').forEach(l=>l.classList.remove('show'));
+        doAnalysis();
+      },280);
+    }
+  }
+  next();
+}
+
+async function doAnalysis(){
+  const z=zones[selId];if(!z)return;
+  const layer=z.layer;
+  const bounds=getBnds(layer);const center=bounds.getCenter();
+  // NDVI
+  const mo=new Date().getMonth();
+  let sf,sn;
+  if(mo>=2&&mo<=4){sf=.55+Math.random()*.2;sn=T('spring');}
+  else if(mo>=5&&mo<=7){sf=.65+Math.random()*.25;sn=T('summer');}
+  else if(mo>=8&&mo<=9){sf=.45+Math.random()*.25;sn=T('autumn');}
+  else{sf=.1+Math.random()*.2;sn=T('winter');}
+  const gs=(((center.lat*1000)%1)+((center.lng*1000)%1))/2;
+  let ndvi=Math.max(-.2,Math.min(.95,sf+gs*.3-.15));
+  ndvi=Math.round(ndvi*100)/100;
+  const veg=Math.max(0,Math.min(100,Math.round((ndvi*1.3+gs*.2)*100)));
+  const sqm=areaSqM(layer);
+  let as,au;
+  if(sqm<10000){as=Math.round(sqm).toLocaleString('fr-FR');au='m²';}
+  else if(sqm<1e6){as=(sqm/10000).toFixed(1);au='ha';}
+  else{as=(sqm/1e6).toFixed(2);au='km²';}
+  // Vegetation
+  let crops=[],vVerdict,vClass,recos=[];
+  if(ndvi>.6&&veg>60){
+    vVerdict=T('vDanger');vClass='danger';
+    crops=[T('cr1'),T('cr2'),T('cr3')];
+    recos=[{i:'📋',tx:T('rD1')},{i:'📍',tx:T('rD2')},{i:'⏰',tx:T('rD3')}];
+  }else if(ndvi>.3&&veg>30){
+    vVerdict=T('vCaution');vClass='caution';
+    crops=gs>.5?[T('cr4'),T('cr5')]:[T('cr6'),T('cr7')];
+    recos=[{i:'👁️',tx:T('rC1')},{i:'🐄',tx:T('rC2')},{i:'✅',tx:T('rC3')}];
+  }else{
+    vVerdict=T('vSafe');vClass='safe';
+    crops=ndvi<0?[T('cr8'),T('cr9')]:[T('cr10'),T('cr11')];
+    recos=[{i:'✅',tx:T('rS1')},{i:'📡',tx:T('rS2')},{i:'🌬️',tx:T('rS3')}];
+  }
+  const vdKey='vd'+vClass.charAt(0).toUpperCase()+vClass.slice(1);
+  const vDesc=T(vdKey,{n:ndvi,v:veg,s:sn});
+  drawOv(selId,layer,ndvi);
+  lastR={ndvi,veg,sqm,as,au,sn,vVerdict,vClass,vDesc,crops,recos,sid:selId,
+         ir:null,infraLoading:true,infraError:false,
+         fVClass:vClass,fVerdict:vVerdict,fDesc:vDesc};
+  renderResults(lastR);
+  document.querySelectorAll('#analyseBtn').forEach(b=>{b.disabled=false;b.innerHTML=T('rebtn');});
+  document.querySelectorAll('.step3el').forEach(el=>{el.classList.remove('act');el.classList.add('done');});
+  if(isMob())showTab('results');
+  else document.querySelector('.resblock')&&document.querySelector('.resblock').scrollIntoView({behavior:'smooth',block:'start'});
+  // Infra
+  const sid=selId;
+  z.infraLayers.forEach(l=>infraFG.removeLayer(l));z.infraLayers=[];
+  try{
+    const els=await fetchOSM(layer);
+    const ir=buildLayers(els,layer);
+    Object.values(ir).forEach(r=>r.layers.forEach(l=>{infraFG.addLayer(l);z.infraLayers.push(l);}));
+    const total=Object.values(ir).reduce((s,r)=>s+r.count,0);
+    if(ir.powerline.count>0||ir.tower.count>0)recos.push({i:'⚡',tx:T('rI1',{n:ir.powerline.count+ir.tower.count})});
+    if(ir.aeroway.count>0)recos.push({i:'✈️',tx:T('rI2')});
+    if(ir.railway.count>0)recos.push({i:'🚂',tx:T('rI3')});
+    if(ir.road.count>0)recos.push({i:'🚗',tx:T('rI4')});
+    if(ir.industrial.count>0)recos.push({i:'🏭',tx:T('rI5')});
+    if(total===0)recos.push({i:'✅',tx:T('rI6')});
+    const hasCrit=ir.powerline.count>0||ir.tower.count>0||ir.aeroway.count>0;
+    let fVC=vClass,fVV=vVerdict,fVD=vDesc;
+    if(hasCrit&&vClass!=='danger'){fVC='caution';fVV=T('vInfra');fVD=T('vdInfra',{vv:vVerdict});}
+    recos.push({i:'📋',tx:T('rFin')});
+    lastR={...lastR,ir,total,recos,fVClass:fVC,fVerdict:fVV,fDesc:fVD,infraLoading:false};
+    renderResults(lastR);
+    if(isMob()&&curTab==='results')showTab('results');
+  }catch(err){
+    recos.push({i:'🔍',tx:T('rI7')});recos.push({i:'📋',tx:T('rFin')});
+    lastR={...lastR,infraLoading:false,infraError:true,recos};
+    renderResults(lastR);
+    if(isMob()&&curTab==='results')showTab('results');
+  }
+}
+
+/* ════════════════════════════════════════
+   RENDER RESULTS
+════════════════════════════════════════ */
+function renderResults(r){
+  if(!r)return;
+  const inf=INFRA();
+  const pct=(((r.ndvi+1)/2)*100).toFixed(1);
+  const nc=r.ndvi>.5?'r':r.ndvi>.25?'y':'g';
+  const vc=r.veg>60?'r':r.veg>30?'y':'g';
+  const sc=r.fVClass==='safe'?'g':r.fVClass==='caution'?'y':'r';
+  let infraH='';
+  if(r.infraLoading){
+    infraH=`<div class="iloading"><span>${T('iload')}</span></div>`;
+  }else if(r.infraError){
+    infraH=`<div class="ierr">${T('ierr')}</div>`;
+  }else if(r.ir){
+    const total=r.total||0;
+    const cnt=total>0?`(${total})`:'';
+    const cards=Object.entries(inf).map(([key,cfg])=>{
+      const c=r.ir[key]?r.ir[key].count:0;const has=c>0;
+      return`<div class="icard${has?' has':''}" data-t="${key}" data-z="${r.sid}"
+        style="${has?'border-left-color:'+cfg.col+';':''}"
+        onclick="toggleInfra('${key}',${r.sid})" title="${T('thide')}">
+        <span class="iico">${cfg.ico}</span>
+        <div class="iin"><div class="inm">${cfg.label}</div>
+          <div class="ict${c===0?' zero':''}" style="${c>0?'color:'+cfg.col:''}">${c}</div></div>
+      </div>`;
+    }).join('');
+    const acts=Object.entries(inf).filter(([k])=>r.ir[k]&&r.ir[k].count>0);
+    const legH=acts.map(([k,c])=>`<div class="leg"><div class="legdot" style="background:${c.col}"></div>${c.ico} ${c.label}</div>`).join('');
+    const ikeys=['isB','isT','isPL','isR','isRW','isA','isW','isI'];
+    const inames=['building','tower','powerline','road','railway','aeroway','waterway','industrial'];
+    const parts=inames.map((k,i)=>r.ir[k]&&r.ir[k].count>0?T(ikeys[i],{n:r.ir[k].count}):null).filter(Boolean);
+    const sumText=parts.length>0?'📊 '+parts.join(' · '):T('inone');
+    infraH=`<div class="ihead">${T('ititle')} <span style="color:var(--accent);font-size:10px;font-weight:normal;text-transform:none;letter-spacing:0;">${cnt}</span></div>
+      <div class="igrid">${cards}</div>
+      ${legH?`<div class="legrow">${legH}</div>`:''}
+      <div class="isum">${sumText}</div>`;
+  }
+  const html=`
+    <div class="verdict ${r.fVClass}">
+      <div class="vi">${r.fVClass==='safe'?'✅':r.fVClass==='caution'?'⚠️':'⛔'}</div>
+      <div><div class="vt">${r.fVerdict}</div><div class="vd">${r.fDesc}</div></div>
+    </div>
+    <div class="metrics">
+      <div class="met"><div class="ml">${T('mNDVI')}</div><div class="mv ${nc}">${r.ndvi.toFixed(2)}</div></div>
+      <div class="met"><div class="ml">${T('mVeg')}</div><div class="mv ${vc}">${r.veg}%</div></div>
+      <div class="met"><div class="ml">${T('mArea')}</div><div class="mv b">${r.as}</div><div class="mu">${r.au}</div></div>
+      <div class="met"><div class="ml">${T('mSeas')}</div><div class="mv ${sc}" style="font-size:12px;margin-top:3px;">${r.sn}</div></div>
+    </div>
+    <div class="ndvib">
+      <div class="ndvih"><span>${T('solnu')}</span><span>NDVI = <strong>${r.ndvi.toFixed(2)}</strong></span><span>${T('dense')}</span></div>
+      <div class="ndvit"><div class="ndvc" style="left:${pct}%"></div></div>
+      <div class="ndvtk"><span>-1</span><span>-0.5</span><span>0</span><span>+0.3</span><span>+0.6</span><span>+1</span></div>
+    </div>
+    <div style="margin-bottom:11px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:5px;">${T('vlabel')}</div>
+      <div>${r.crops.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
+    </div>
+    <div style="margin-bottom:11px;">${infraH}</div>
+    <div style="margin-bottom:11px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px;">${T('rtlt')}</div>
+      <div class="rlist">${r.recos.map(rc=>`<div class="ritem"><em>${rc.i}</em><span>${rc.tx}</span></div>`).join('')}</div>
+    </div>
+    <div class="src">${T('src').replace('\n','<br>')}</div>`;
+  document.querySelectorAll('.res-target').forEach(el=>el.innerHTML=html);
+  document.querySelectorAll('.resblock').forEach(el=>el.style.display='block');
+}
+
+/* ════════════════════════════════════════
+   NDVI OVERLAY
+════════════════════════════════════════ */
+function drawOv(zid,layer,ndvi){
+  const z=zones[zid];if(!z)return;
+  if(z.overlay)overlayFG.removeLayer(z.overlay);
+  let col;
+  if(ndvi>.6)col='#006400';else if(ndvi>.4)col='#7FBA00';
+  else if(ndvi>.2)col='#D4E157';else if(ndvi>0)col='#FDD835';else col='#8D6E63';
+  const st={color:'#fff',weight:2,fillColor:col,fillOpacity:.42};
+  let ov;
+  if(layer instanceof L.Circle)ov=L.circle(layer.getLatLng(),{radius:layer.getRadius(),...st});
+  else if(layer instanceof L.Rectangle)ov=L.rectangle(layer.getBounds(),st);
+  else ov=L.polygon(layer.getLatLngs(),st);
+  overlayFG.addLayer(ov);z.overlay=ov;
+  ov.bindPopup(`<div style="font-family:-apple-system,sans-serif;font-size:12px;line-height:1.5">
+    <b>${z.name}</b><br>NDVI : <b>${ndvi.toFixed(2)}</b><br>
+    <span style="color:#888">${ndvi>.5?'🌿':ndvi>.25?'🌱':'🏜️'}</span>
+  </div>`).openPopup();
+}
+
+/* ════════════════════════════════════════
+   SIDEBAR HTML (Desktop)
+════════════════════════════════════════ */
+function mkSteps(){return`<div class="ss"><h3>${T('proc')}</h3><div class="steps">
+  <div class="step act step1el"><div class="snum">1</div><div class="stxt"><strong>${T('s1t')}</strong><small>${T('s1d')}</small></div></div>
+  <div class="step step2el"><div class="snum">2</div><div class="stxt"><strong>${T('s2t')}</strong><small>${T('s2d')}</small></div></div>
+  <div class="step step3el"><div class="snum">3</div><div class="stxt"><strong>${T('s3t')}</strong><small>${T('s3d')}</small></div></div>
+</div></div>`;}
+
+function mkTools(){return`<div class="ss"><h3>${T('ttools')}</h3>
+  <div class="tools">
+    <button class="tbtn" id="btnRect" onclick="setTool('rect')"><span class="tsp">⬜</span>${T('tRect')}</button>
+    <button class="tbtn" id="btnPoly" onclick="setTool('poly')"><span class="tsp">🔷</span>${T('tPoly')}</button>
+    <button class="tbtn" id="btnCircle" onclick="setTool('circle')"><span class="tsp">⭕</span>${T('tCircle')}</button>
+  </div>
+  <div class="dhint" id="drawHint"><span>✏️</span><span></span></div>
+</div>`;}
+
+function mkZones(){return`<div class="ss"><h3>${T('tzones')}</h3><div class="zlist zlist-target"></div></div>`;}
+
+function mkLayers(){
+  const layDefs=[{k:'satellite',label:T('sat'),col:'#4a90d9',ico:'🛰️'},{k:'osm',label:T('osm'),col:'#7ec8a0',ico:'🗺️'},{k:'topo',label:T('topo'),col:'#b8860b',ico:'🏔️'}];
+  return`<div class="ss"><h3>${T('tlayers')}</h3><div class="llist">
+    ${layDefs.map(l=>`<div class="litem${curLayer===l.k?' on':''}" id="li_${l.k}" onclick="setLayer('${l.k}')">
+      <div class="ldot" style="background:${l.col}"></div><span>${l.ico} ${l.label}</span><span class="lchk">✓</span>
+    </div>`).join('')}
+  </div></div>`;}
+
+function mkAnalyse(){return`<div class="ss"><button id="analyseBtn" ${selId?'':'disabled'} onclick="startAnalysis()">${T('abtn')}</button></div>`;}
+
+function mkLoader(){return`<div class="ss lwrap" id="loaderSection"><div class="spin"></div>
+  <div style="font-size:13px;font-weight:600;">${T('loading')}</div>
+  <div class="lsteps">
+    ${['ls1','ls2','ls3','ls4','ls5','ls6'].map(id=>`<div class="lstep" id="${id}"><div class="ld"></div>${T(id)}</div>`).join('')}
+  </div></div>`;}
+
+function mkResults(){return`<div class="ss resblock" style="display:none"><h3>${T('rtitle')}</h3><div class="res-target"></div></div>`;}
+
+function renderSB(){
+  const el=document.getElementById('sbContent');if(!el)return;
+  el.innerHTML=mkSteps()+mkTools()+mkZones()+mkLayers()+mkAnalyse()+mkLoader()+mkResults();
+  renderZones();
+  if(lastR)renderResults(lastR);
+}
+
+/* ════════════════════════════════════════
+   MOBILE TABS
+════════════════════════════════════════ */
+function showTab(tab){
+  curTab=tab;
+  document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('on'));
+  const tn={draw:'tnDraw',zones:'tnZones',layers:'tnLayers',results:'tnResults'}[tab];
+  if(tn)document.getElementById(tn).classList.add('on');
+  const panel=document.getElementById('bsheet');
+  const cont=document.getElementById('bscontent');
+  if(!panel||!cont)return;
+  let html='';
+  if(tab==='draw') html=mkSteps()+mkTools();
+  else if(tab==='zones') html=mkZones()+mkAnalyse()+mkLoader();
+  else if(tab==='layers') html=mkLayers();
+  else if(tab==='results'){
+    html=lastR?mkResults():`<div class="ss"><div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">${T('noResult')}</div></div>`;
+  }
+  cont.innerHTML=html;
+  panel.classList.add('open');
+  renderZones();
+  if(lastR)renderResults(lastR);
+}
+
+// Tap map => close panel
+document.getElementById('map').addEventListener('click',()=>{
+  if(isMob()&&!drawH){
+    document.getElementById('bsheet').classList.remove('open');
+    document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('on'));
+  }
+});
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+applyStaticT();
+renderSB();
+if(isMob())showTab('draw');
+map.locate({setView:true,maxZoom:12});
+map.on('locationfound',e=>map.setView(e.latlng,13));
+</script>
+</body>
+</html>
