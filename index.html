@@ -72,13 +72,14 @@ header{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--hh);
 .tnav .ico{font-size:20px;line-height:1;}
 
 /* BOTTOM SHEET (mobile) */
-.bsheet{display:none;position:fixed;bottom:0;left:0;right:0;
+.bsheet{position:fixed;bottom:0;left:0;right:0;will-change:transform;
   background:var(--surface);border-top:2px solid var(--border);
   border-radius:16px 16px 0 0;z-index:1400;
   transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
   max-height:76vh;}
 .bsheet.open{transform:translateY(0);}
-.bhandle{width:40px;height:5px;background:var(--muted);border-radius:4px;margin:12px auto 6px;cursor:grab;opacity:.6;}
+.bhandle-wrap{padding:16px 0 8px;cursor:grab;user-select:none;touch-action:pan-y;-webkit-user-select:none;}
+.bhandle{width:44px;height:5px;background:var(--muted);border-radius:4px;margin:0 auto;opacity:.7;}
 .bscroll{overflow-y:auto;max-height:calc(76vh - 28px);padding-bottom:24px;}
 .bscroll::-webkit-scrollbar{width:3px;}
 .bscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
@@ -197,7 +198,7 @@ header{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--hh);
 /* INFRA */
 .ihead{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
   font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.igrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.igrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;}
 .icard{background:var(--bg);border:1px solid var(--border);border-radius:8px;
   padding:8px 9px;display:flex;align-items:center;gap:7px;cursor:pointer;
   transition:all .15s;user-select:none;min-height:52px;}
@@ -235,8 +236,14 @@ header{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--hh);
 @media(max-width:768px){
   .sidebar{display:none!important;}
   .mobnav{display:flex;}
-  .bsheet{display:block;}
   .logo p{display:none;}
+  /* Leaflet zoom control above nav */
+  .leaflet-control-zoom{margin-bottom:calc(var(--tabh) + 16px)!important;}
+  .leaflet-bottom{bottom:var(--tabh)!important;}
+}
+@media(min-width:769px){
+  .bsheet{display:none!important;}
+  .mobnav{display:none!important;}
 }
 /* ─── TABLET ─── */
 @media(min-width:769px) and (max-width:1024px){
@@ -280,7 +287,7 @@ header{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--hh);
 </div>
 
 <div class="bsheet" id="bsheet">
-  <div class="bhandle"></div>
+  <div class="bhandle-wrap" id="bhandle-wrap"><div class="bhandle"></div></div>
   <div class="bscroll" id="bscontent"></div>
 </div>
 
@@ -315,15 +322,18 @@ fr:{
   vlabel:'Végétation détectée',
   ititle:'🏗️ Infrastructures détectées',
   iload:'⏳ Interrogation OpenStreetMap…',
-  inone:'✅ Aucune infrastructure critique détectée.',
+  inone:'✅ Aucune infrastructure critique détectée dans cette zone.',
   ierr:'⚠️ Impossible de contacter Overpass API — vérifiez votre connexion.',
   rtlt:'Recommandations de vol',
   src:'🛰️ NDVI : Sentinel-2 ESA Copernicus (simulé)\n🗺️ Infrastructures : OpenStreetMap — Overpass API (temps réel)',
   spring:'🌱 Printemps',summer:'☀️ Été',autumn:'🍂 Automne',winter:'❄️ Hiver',
   vDanger:'⛔ Cultures actives',vCaution:'⚠️ Végétation modérée',vSafe:'✅ Zone dégagée',
   vInfra:'⚠️ Obstacles détectés dans la zone',
+  vWater:'⚠️ Plan d\'eau dans la zone',vForest:'⚠️ Zone boisée détectée',
   vdDanger:'NDVI {n} · {v}% végétation · {s}',vdCaution:'NDVI {n} · {v}% végétation · {s}',
   vdSafe:'NDVI {n} · {v}% végétation · {s}',vdInfra:'{vv} · Infrastructures critiques présentes',
+  vdWater:'Vol possible · Survol de plan d\'eau réglementé — vérifiez les règles locales',
+  vdForest:'Vol possible · Zone boisée — turbulences possibles en lisière de forêt',
   cr1:'🌾 Céréales',cr2:'🌽 Maïs/Sorgho',cr3:'🌱 Cultures maraîchères',
   cr4:'🌿 Prairie/Pâturage',cr5:'🌱 Jeunes pousses',cr6:'🌾 Post-récolte',cr7:'🌿 Végétation basse',
   cr8:'🏜️ Sol nu',cr9:'🪨 Roche',cr10:'🌾 Chaume',cr11:'🏗️ Zone ouverte',
@@ -387,8 +397,11 @@ en:{
   spring:'🌱 Spring',summer:'☀️ Summer',autumn:'🍂 Autumn',winter:'❄️ Winter',
   vDanger:'⛔ Active crops detected',vCaution:'⚠️ Moderate vegetation',vSafe:'✅ Clear zone',
   vInfra:'⚠️ Obstacles detected in zone',
+  vWater:'⚠️ Water body in zone',vForest:'⚠️ Forest/trees detected',
   vdDanger:'NDVI {n} · {v}% vegetation · {s}',vdCaution:'NDVI {n} · {v}% vegetation · {s}',
   vdSafe:'NDVI {n} · {v}% vegetation · {s}',vdInfra:'{vv} · Critical infrastructure present',
+  vdWater:'Flight possible · Flying over water is regulated — check local rules',
+  vdForest:'Flight possible · Forested area — turbulence possible at forest edges',
   cr1:'🌾 Cereals',cr2:'🌽 Corn/Sorghum',cr3:'🌱 Market garden',
   cr4:'🌿 Pasture/Meadow',cr5:'🌱 Young shoots',cr6:'🌾 Post-harvest',cr7:'🌿 Low vegetation',
   cr8:'🏜️ Bare soil',cr9:'🪨 Rock',cr10:'🌾 Stubble',cr11:'🏗️ Open area',
@@ -466,7 +479,7 @@ const infraFG=new L.FeatureGroup().addTo(map);
    STATE
 ════════════════════════════════════════ */
 const zones={};
-let zCnt=0,selId=null,drawH=null,curTab='draw',lastR=null;
+let zCnt=0,zDisplay=0,selId=null,drawH=null,curTab='draw',lastR=null;
 const COLORS=['#58a6ff','#f0883e','#bc8cff','#3fb950','#ff7b72','#79c0ff','#ffa657'];
 
 /* ════════════════════════════════════════
@@ -480,7 +493,7 @@ function INFRA(){return{
   railway:  {get label(){return T('iRW')},ico:'🚂',col:'#a371f7',q:`(way["railway"~"rail|light_rail|subway|tram"]({{B}}););`},
   aeroway:  {get label(){return T('iA')},ico:'✈️',col:'#58a6ff',q:`(way["aeroway"]({{B}});node["aeroway"]({{B}}););`},
   waterway: {get label(){return T('iW')},ico:'💧',col:'#4fc3f7',
-    q:`(way["waterway"]({{B}});way["natural"="water"]({{B}});way["water"]({{B}});relation["natural"="water"]({{B}});relation["water"]({{B}});relation["type"="waterway"]({{B}});way["landuse"="reservoir"]({{B}});way["leisure"="swimming_pool"]({{B}}););`},
+    q:`(way["waterway"]({{B}});way["natural"="water"]({{B}});way["water"]({{B}});relation["natural"="water"]({{B}});relation["water"="lake"]({{B}});relation["water"="pond"]({{B}});relation["water"="reservoir"]({{B}});relation["type"="waterway"]({{B}});way["landuse"="reservoir"]({{B}}););`},
   tree:     {get label(){return T('iTree')},ico:'🌳',col:'#228b22',
     q:`(way["natural"="wood"]({{B}});way["landuse"="forest"]({{B}});way["natural"="tree_row"]({{B}});node["natural"="tree"]({{B}});relation["natural"="wood"]({{B}});relation["landuse"="forest"]({{B}}););`},
   industrial:{get label(){return T('iI')},ico:'🏭',col:'#e3b341',q:`(way["landuse"="industrial"]({{B}});way["landuse"="commercial"]({{B}}););`},
@@ -521,11 +534,14 @@ map.on(L.Draw.Event.CREATED,function(e){
   document.querySelectorAll('.dhint').forEach(d=>d.classList.remove('show'));
   document.getElementById('mobHint').classList.remove('show');
   const id=++zCnt;
-  const color=COLORS[(id-1)%COLORS.length];
+  // zDisplay: counts only living zones (+1 for new one)
+  const zCount=Object.keys(zones).length; // before adding
+  zDisplay=zCount===0?1:zDisplay+1;
+  const color=COLORS[(zDisplay-1)%COLORS.length];
   const layer=e.layer;
   if(layer.setStyle)layer.setStyle({color,fillColor:color,fillOpacity:.18,weight:2});
   drawnFG.addLayer(layer);
-  zones[id]={layer,overlay:null,infraLayers:[],name:T('zone')+' '+id,areaStr:areaStr(layer),color};
+  zones[id]={layer,overlay:null,infraLayers:[],name:T('zone')+' '+zDisplay,areaStr:areaStr(layer),color,displayNum:zDisplay};
   renderZones();selZone(id);
   document.getElementById('mapHint').style.display='none';
   document.querySelectorAll('.step1el').forEach(el=>{el.classList.remove('act');el.classList.add('done');});
@@ -561,6 +577,7 @@ function delZone(id,e){
     const rem=Object.keys(zones);
     if(rem.length>0)selZone(Number(rem[rem.length-1]));
     else{
+      zDisplay=0; // reset display counter when all zones deleted
       document.querySelectorAll('.step1el').forEach(el=>{el.classList.add('act');el.classList.remove('done');});
       document.querySelectorAll('.step2el,.step3el').forEach(el=>el.classList.remove('act','done'));
       document.getElementById('mapHint').style.display='block';
@@ -575,7 +592,7 @@ function renderZones(){
       const z=zones[id];
       return`<div class="zitem${id==selId?' sel':''}" onclick="selZone(${id})">
         <div class="zdot" style="background:${z.color}"></div>
-        <span class="zname">${z.name}</span><span class="zarea">${z.areaStr}</span>
+        <span class="zname">${T('zone')} ${z.displayNum}</span><span class="zarea">${z.areaStr}</span>
         <button class="zdel" onclick="delZone(${id},event)" title="${T('del')}">✕</button>
       </div>`;
     }).join('');
@@ -613,29 +630,51 @@ function getBnds(l){return l.getBounds?l.getBounds():l.getLatLng().toBounds(l.ge
 function isMob(){return window.innerWidth<=768;}
 
 /* ════════════════════════════════════════
-   OVERPASS API
+   OVERPASS API  (with fallback mirror)
 ════════════════════════════════════════ */
+const OVERPASS_ENDPOINTS=[
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+];
+
 async function fetchOSM(layer){
   const b=getBnds(layer);
   const bbox=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
   const inf=INFRA();
   const parts=Object.values(inf).map(cfg=>cfg.q.replace(/\{\{B\}\}/g,bbox)).join('\n');
-  const query=`[out:json][timeout:30];\n(\n${parts}\n);\nout body geom qt;`;
-  const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  const d=await r.json();return d.elements||[];
+  // Use out geom for ways/nodes, out bb geom for relations to keep response manageable
+  const query=`[out:json][timeout:25][maxsize:50000000];\n(\n${parts}\n);\nout body geom;`;
+  const encoded=encodeURIComponent(query);
+  let lastErr=null;
+  for(const endpoint of OVERPASS_ENDPOINTS){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),20000);
+      const r=await fetch(`${endpoint}?data=${encoded}`,{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      return d.elements||[];
+    }catch(e){lastErr=e;continue;}
+  }
+  throw lastErr||new Error('All Overpass endpoints failed');
 }
 function classEl(el){
   const t=el.tags||{};
   if(t.building)return'building';
   if(t.power==='line'||t.power==='minor_line')return'powerline';
   if(t.man_made==='tower'||t.man_made==='mast'||t.power==='tower'||t.power==='pole')return'tower';
-  if(t.highway)return'road';if(t.railway)return'railway';
+  if(t.highway)return'road';
+  if(t.railway)return'railway';
   if(t.aeroway)return'aeroway';
-  // Water: waterway tag, natural=water, water=* (lake, pond, reservoir…), landuse=reservoir, leisure=swimming_pool
-  if(t.waterway||t.natural==='water'||t.water||t.landuse==='reservoir'||t.leisure==='swimming_pool')return'waterway';
-  // Trees/forest: natural=wood, landuse=forest, natural=tree_row, natural=tree
-  if(t.natural==='wood'||t.landuse==='forest'||t.natural==='tree_row'||t.natural==='tree')return'tree';
+  // Water: any water-related tag. Lac Léman = relation natural=water, water=lake
+  if(t.waterway||t.natural==='water'||t.water||
+     t.landuse==='reservoir'||t.leisure==='swimming_pool'||
+     t.natural==='bay'||t.natural==='strait')return'waterway';
+  // Trees/forest
+  if(t.natural==='wood'||t.landuse==='forest'||
+     t.natural==='tree_row'||t.natural==='tree')return'tree';
   if(t.landuse==='industrial'||t.landuse==='commercial')return'industrial';
   return null;
 }
@@ -644,40 +683,50 @@ function buildLayers(elements,zoneLayer){
   Object.keys(inf).forEach(k=>res[k]={count:0,layers:[]});
   const seen=new Set();
   elements.forEach(el=>{
-    const type=classEl(el);if(!type||seen.has(el.id))return;seen.add(el.id);
+    const type=classEl(el);if(!type||seen.has(el.type+el.id))return;seen.add(el.type+el.id);
     const cfg=inf[type];
-    const name=(el.tags&&(el.tags.name||el.tags.ref))||'';
+    const name=(el.tags&&(el.tags.name||el.tags['name:fr']||el.tags.ref))||'';
     const tip=`<b>${cfg.ico} ${cfg.label}</b>${name?' — '+name:''}`;
     let lyr=null;
+
     if(el.type==='node'&&el.lat!==undefined){
       if(zoneLayer instanceof L.Circle){
         const d=zoneLayer.getLatLng().distanceTo(L.latLng(el.lat,el.lon));
         if(d>zoneLayer.getRadius())return;
       }
-      lyr=L.circleMarker([el.lat,el.lon],{radius:type==='tower'?7:type==='tree'?5:5,color:cfg.col,fillColor:cfg.col,fillOpacity:.9,weight:2})
-           .bindTooltip(tip,{direction:'top',className:'osm-tip'});
+      lyr=L.circleMarker([el.lat,el.lon],{
+        radius:type==='tower'?7:5,color:cfg.col,fillColor:cfg.col,fillOpacity:.9,weight:2
+      }).bindTooltip(tip,{direction:'top',className:'osm-tip'});
+
     }else if(el.type==='way'&&el.geometry&&el.geometry.length>1){
       const coords=el.geometry.map(p=>[p.lat,p.lon]);
-      // Closed polygon for: buildings, landuse areas, water bodies, forests
-      const isClosed=!!(el.tags&&(
-        el.tags.building||el.tags.landuse||
-        el.tags.natural==='water'||el.tags.natural==='wood'||
-        el.tags.water||el.tags.waterway==='riverbank'||
-        el.tags.leisure==='swimming_pool'||el.tags.landuse==='reservoir'
-      ));
-      const style={color:cfg.col,weight:type==='road'?3:type==='waterway'?2:type==='tree'?1.5:2,
-        fillColor:cfg.col,fillOpacity:isClosed?(type==='waterway'?.45:type==='tree'?.3:.25):0,
-        dashArray:type==='powerline'?'6,4':type==='railway'?'8,3':null,opacity:.85};
-      lyr=isClosed?L.polygon(coords,style).bindTooltip(tip,{className:'osm-tip'})
-                  :L.polyline(coords,style).bindTooltip(tip,{className:'osm-tip'});
-    }else if(el.type==='relation'&&el.members){
-      // For relations (large lakes, forests) — draw a simple bounding marker
-      const outer=el.members.find(m=>m.role==='outer'&&m.geometry);
-      if(outer&&outer.geometry&&outer.geometry.length>1){
-        const coords=outer.geometry.map(p=>[p.lat,p.lon]);
-        const style={color:cfg.col,weight:2,fillColor:cfg.col,
-          fillOpacity:type==='waterway'?.45:type==='tree'?.3:.25,opacity:.85};
-        lyr=L.polygon(coords,style).bindTooltip(tip,{className:'osm-tip'});
+      const t2=el.tags||{};
+      const isClosed=!!(t2.building||t2.landuse||
+        t2.natural==='water'||t2.natural==='wood'||
+        t2.water||t2.waterway==='riverbank'||
+        t2.leisure==='swimming_pool'||t2.landuse==='reservoir');
+      const fillOp=isClosed?(type==='waterway'?.5:type==='tree'?.3:.25):0;
+      const style={color:cfg.col,weight:type==='road'?3:2,fillColor:cfg.col,
+        fillOpacity:fillOp,dashArray:type==='powerline'?'6,4':type==='railway'?'8,3':null,opacity:.85};
+      lyr=isClosed
+        ?L.polygon(coords,style).bindTooltip(tip,{className:'osm-tip'})
+        :L.polyline(coords,style).bindTooltip(tip,{className:'osm-tip'});
+
+    }else if(el.type==='relation'){
+      // Multipolygon relations (large lakes, forests): collect all outer ring geometries
+      const outerCoords=[];
+      if(el.members){
+        el.members.forEach(m=>{
+          if(m.role==='outer'&&m.geometry&&m.geometry.length>1){
+            outerCoords.push(m.geometry.map(p=>[p.lat,p.lon]));
+          }
+        });
+      }
+      if(outerCoords.length>0){
+        const fillOp=type==='waterway'?.5:type==='tree'?.3:.25;
+        const style={color:cfg.col,weight:2,fillColor:cfg.col,fillOpacity:fillOp,opacity:.85};
+        // Multi-ring polygon
+        lyr=L.polygon(outerCoords,style).bindTooltip(tip,{className:'osm-tip'});
       }
     }
     if(lyr){lyr._itype=type;res[type].count++;res[type].layers.push(lyr);}
@@ -784,9 +833,24 @@ async function doAnalysis(){
     if(ir.waterway.count>0)recos.push({i:'💧',tx:T('rIW')});
     if(ir.tree.count>0)recos.push({i:'🌳',tx:T('rITree')});
     if(total===0)recos.push({i:'✅',tx:T('rI6')});
-    const hasCrit=ir.powerline.count>0||ir.tower.count>0||ir.aeroway.count>0;
+    // Verdict upgrade based on infra
+    const hasCrit=ir.powerline.count>0||ir.tower.count>0||ir.aeroway.count>0||ir.building.count>0;
+    const hasWater=ir.waterway.count>0;
+    const hasTrees=ir.tree.count>0;
     let fVC=vClass,fVV=vVerdict,fVD=vDesc;
-    if(hasCrit&&vClass!=='danger'){fVC='caution';fVV=T('vInfra');fVD=T('vdInfra',{vv:vVerdict});}
+    if(hasCrit&&vClass!=='danger'){
+      fVC='caution';fVV=T('vInfra');fVD=T('vdInfra',{vv:vVerdict});
+    }else if(hasWater&&vClass!=='danger'){
+      // Water: caution always (flight possible but regulated)
+      fVC='caution';
+      fVV=T('vWater');
+      fVD=T('vdWater');
+    }else if(hasTrees&&vClass!=='danger'){
+      // Forest: caution (turbulence risk)
+      fVC='caution';
+      fVV=T('vForest');
+      fVD=T('vdForest');
+    }
     recos.push({i:'📋',tx:T('rFin')});
     lastR={...lastR,ir,total,recos,fVClass:fVC,fVerdict:fVV,fDesc:fVD,infraLoading:false};
     renderResults(lastR);
@@ -958,61 +1022,77 @@ function showTab(tab){
   if(lastR)renderResults(lastR);
 }
 
-// ── BOTTOM SHEET DRAG-TO-CLOSE (touch gesture) ──────────
-(function(){
+// ── BOTTOM SHEET DRAG-TO-CLOSE ──────────────────────────
+function initSheetDrag(){
   const sheet=document.getElementById('bsheet');
-  if(!sheet)return;
-  let startY=0,startTrans=0,dragging=false,velY=0,lastY=0,lastT=0;
+  const handle=document.getElementById('bhandle-wrap');
+  if(!sheet||!handle)return;
 
-  function getSheetY(){
-    // Current translateY in px (0 = open, positive = closing)
-    const st=window.getComputedStyle(sheet);
-    const mat=new DOMMatrix(st.transform);
-    return mat.m42;
+  let startY=0,curY=0,dragging=false,velY=0,lastY=0,lastT=0,startTranslate=0;
+
+  function getCurrentTranslate(){
+    const m=new DOMMatrix(window.getComputedStyle(sheet).transform);
+    return isNaN(m.m42)?0:m.m42;
+  }
+  function closeSheet(){
+    sheet.style.transition='transform .3s cubic-bezier(.4,0,.2,1)';
+    sheet.style.transform='translateY(100%)';
+    setTimeout(()=>{sheet.classList.remove('open');sheet.style.transform='';sheet.style.transition='';},300);
+    document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('on'));
+  }
+  function openSheet(){
+    sheet.style.transition='transform .3s cubic-bezier(.4,0,.2,1)';
+    sheet.style.transform='translateY(0)';
+    setTimeout(()=>{sheet.style.transition='';},300);
   }
 
-  sheet.addEventListener('touchstart',function(e){
-    // Only drag if touch starts on handle zone (top 40px) OR the scroll is at top
-    const scroll=sheet.querySelector('.bscroll');
-    const atTop=!scroll||scroll.scrollTop===0;
-    const touchY=e.touches[0].clientY;
-    const rect=sheet.getBoundingClientRect();
-    const isHandle=touchY-rect.top<48; // top 48px = handle area
-    if(!isHandle&&!atTop)return;
+  // Drag on handle
+  handle.addEventListener('touchstart',function(e){
     dragging=true;
-    startY=touchY;
-    startTrans=getSheetY();
-    velY=0;lastY=touchY;lastT=Date.now();
+    startY=e.touches[0].clientY;
+    startTranslate=sheet.classList.contains('open')?0:sheet.offsetHeight;
+    curY=startTranslate;
+    velY=0;lastY=startY;lastT=Date.now();
+    sheet.style.transition='none';
+    e.preventDefault();
+  },{passive:false});
+
+  // Also allow drag on scroll area when scrolled to top
+  sheet.addEventListener('touchstart',function(e){
+    const sc=sheet.querySelector('.bscroll');
+    const atTop=!sc||sc.scrollTop===0;
+    const rect=sheet.getBoundingClientRect();
+    const isTopZone=e.touches[0].clientY-rect.top<54;
+    if(!isTopZone||!atTop)return;
+    dragging=true;
+    startY=e.touches[0].clientY;
+    startTranslate=0;curY=0;
+    velY=0;lastY=startY;lastT=Date.now();
     sheet.style.transition='none';
   },{passive:true});
 
   document.addEventListener('touchmove',function(e){
     if(!dragging)return;
     const y=e.touches[0].clientY;
-    const dy=y-startY;
     const now=Date.now();
-    velY=(y-lastY)/(now-lastT||1);
+    velY=(y-lastY)/Math.max(now-lastT,1);
     lastY=y;lastT=now;
-    const newY=Math.max(0,startTrans+dy); // don't allow dragging up beyond open
-    sheet.style.transform=`translateY(${newY}px)`;
+    curY=Math.max(0,startTranslate+(y-startY));
+    sheet.style.transform=`translateY(${curY}px)`;
   },{passive:true});
 
   document.addEventListener('touchend',function(){
     if(!dragging)return;
     dragging=false;
-    sheet.style.transition='';
-    const curY=getSheetY();
-    const sheetH=sheet.offsetHeight;
-    // Close if dragged >35% down OR fast flick downward (vel > 0.4px/ms)
-    if(curY>sheetH*0.35||velY>0.4){
-      sheet.classList.remove('open');
-      sheet.style.transform='';
-      document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('on'));
+    const sheetH=sheet.offsetHeight||300;
+    if(curY>sheetH*0.28||velY>0.35){
+      closeSheet();
     }else{
-      sheet.style.transform='';
+      openSheet();
     }
   });
-})();
+}
+initSheetDrag();
 
 // Tap map => close panel
 document.getElementById('map').addEventListener('click',()=>{
